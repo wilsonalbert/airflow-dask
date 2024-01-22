@@ -1,0 +1,62 @@
+from __future__ import print_function
+from airflow.utils.email import send_email
+from airflow.models import TaskInstance
+import logging
+import os
+from pprint import pprint
+from pathlib import Path
+from builtins import range
+from datetime import datetime, timedelta
+from airflow.operators.python import PythonOperator
+from airflow.models import DAG
+from airflow.utils.email import send_email
+from airflow.models import Variable
+from airflow.utils import timezone
+from airflow import settings
+
+args = {
+    'owner': 'airflow',
+    'start_date': datetime(2020, 11, 10),
+    'depends_on_past': False,
+    'max_active_runs': 1,
+    'concurrency': 4,
+    'dagrun_timeout ': timedelta(seconds=30)
+}
+
+dag = DAG(
+    dag_id=os.path.basename(__file__).replace(".pyc", "").replace(".py", ""),
+    default_args=args,
+    schedule_interval=None,
+    catchup=False,
+    is_paused_upon_creation=True
+)
+
+
+def check_removed(ds, **kwargs):
+    email="wilson_alberto.penafiel_calderon@mercedes-benz.com"
+    session = settings.Session()
+    AIRFLOW_ELK_MONITORING_DT = Variable.get("AIRFLOW_LAST_EMAIL_REMOVED", last_date_string)
+    start_date_to_evaluate = dateutil.parser.parse(AIRFLOW_ELK_MONITORING_DT)
+
+    AIRFLOW_ACTUAL_DATE = timezone.utcnow().isoformat()
+    logging.info("Last execution as variable: %s", AIRFLOW_ELK_MONITORING_DT)
+    query = session.query(TaskInstance).filter(Log.state == "removed",
+                                               TaskInstance.start_date >= start_date_to_evaluate,
+                                               TaskInstance.dag_id.like('e2e_%')
+                                               )
+    list_with_dags = query.all()
+    if (len(list_with_dags)) > 0:
+        for entry_element in list_with_dags:
+            logging.info("Checking task entry: %s", entry)
+    else:
+        logging.info("No new elements")
+
+    Variable.set(key=airflow_variable, value=AIRFLOW_ACTUAL_DATE)
+
+run_this = PythonOperator(
+    task_id='check_removed',
+    provide_context=True,
+    python_callable=check_removed,
+    dag=dag)
+
+run_this

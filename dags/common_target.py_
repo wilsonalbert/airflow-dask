@@ -1,0 +1,43 @@
+from datetime import datetime
+from time import sleep
+from airflow.operators.dummy import DummyOperator
+from airflow import DAG
+from airflow.decorators import task
+from airflow.operators.python import PythonOperator, BranchPythonOperator
+
+
+
+def coordinator():
+    # This can also be from an API call, checking a database, -- almost anything you like, as long as the
+    # resulting list/dictionary can be stored in the current XCom backend.
+    return [[1],[2],[3],[1],[2],[3],[1],[2],[3],[1],[2],[3]]
+
+
+def plus_10_traditional(x):
+
+    return x+10
+
+with DAG(dag_id="common_target"
+        ,start_date= datetime(2020, 11, 10),
+
+        tags=['dynamicTasks'], max_active_tasks=10,
+        default_args={
+
+        'depends_on_past': False,
+        }
+) as dag:
+    x = PythonOperator.partial(
+        task_id="second",
+        python_callable=plus_10_traditional
+    ).expand(
+        op_args=coordinator()
+    )
+    start = DummyOperator(
+        task_id='start',
+        dag=dag)
+
+    end = DummyOperator(
+        task_id='end',
+        dag=dag)
+
+    start >> x >> end
