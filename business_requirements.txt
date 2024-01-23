@@ -1,3 +1,0 @@
-distributed==2022.12.1
-bokeh>=2.4.2,<3
-airflow_multi_dagrun==2.2.0
